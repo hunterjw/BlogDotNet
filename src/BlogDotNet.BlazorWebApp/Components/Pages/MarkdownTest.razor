@@ -1,0 +1,12 @@
+﻿@page "/markdown-test"
+
+<PageTitle>Markdown Test</PageTitle>
+
+@if (!string.IsNullOrWhiteSpace(PageContent))
+{
+    @((MarkupString)PageContent)
+}
+else
+{
+    <h1>No page content</h1>
+}

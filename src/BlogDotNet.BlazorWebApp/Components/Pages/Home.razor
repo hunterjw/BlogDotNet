@@ -1,0 +1,60 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+<InitializeTimeZone />
+
+<PageTitle>Home</PageTitle>
+
+@if (BlogPosts == null)
+{
+    <p>Nothing to see here</p>
+}
+else
+{
+    if (BlogPosts.Items.Count == 0)
+    {
+        <p>No blog posts</p>
+    }
+    else
+    {
+        foreach (var blogPost in BlogPosts.Items)
+        {
+            <div class="pb-3">
+                <NavLink href="@($"/post/{blogPost.Slug}")">
+                    <h2>
+                        @blogPost.Title
+                    </h2>
+                </NavLink>
+                <div>
+                    <LocalTime DateTime="blogPost.PubDate" />
+                </div>
+                <div>
+                    @blogPost.Description
+                </div>
+            </div>
+        }
+    }
+
+    <nav>
+        <ul class="pagination">
+            @if (BlogPosts.Before != null)
+            {
+                <li class="page-item">
+                    <NavLink class="page-link"
+                             href="@($"?before={BlogPosts.Before.ToString()}&take={Take}")">
+                        Previous
+                    </NavLink>
+                </li>
+            }
+            @if (BlogPosts.After != null)
+            {
+                <li class="page-item">
+                    <NavLink class="page-link"
+                             href="@($"?after={BlogPosts.After.ToString()}&take={Take}")">
+                        Next
+                    </NavLink>
+                </li>
+            }
+        </ul>
+    </nav>
+}

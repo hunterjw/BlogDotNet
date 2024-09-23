@@ -1,0 +1,28 @@
+﻿@page "/post/{slug}"
+@rendermode InteractiveServer
+
+<InitializeTimeZone />
+
+@if (BlogPost == null)
+{
+    <p>Nothing to see here</p>
+}
+else
+{
+    <h1>
+        @BlogPost.Title
+    </h1>
+    <p>
+        <LocalTime DateTime="BlogPost.PubDate" />
+    </p>
+    <p>
+        @BlogPost.Description
+    </p>
+
+    <hr />
+
+    @if (!string.IsNullOrWhiteSpace(BlogPost.ContentHtml))
+    {
+        @((MarkupString)BlogPost.ContentHtml)
+    }
+}
