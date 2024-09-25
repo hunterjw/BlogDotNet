@@ -5,10 +5,14 @@
 
 @if (BlogPost == null)
 {
+    <CustomPageTitle>@Slug</CustomPageTitle>
+
     <p>Nothing to see here</p>
 }
 else
 {
+    <CustomPageTitle>@BlogPost.Title</CustomPageTitle>
+
     <h1>
         @BlogPost.Title
     </h1>

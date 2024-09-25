@@ -3,7 +3,7 @@
 /// <summary>
 /// Database settings
 /// </summary>
-public class DatabaseSettings
+public class DatabaseOptions
 {
     /// <summary>
     /// Database connection string

@@ -34,6 +34,7 @@ services:
                 condition: service_healthy
         environment:
             ConnectionStrings__BlogDotNet: ${APP_SECRETS__POSTGRES_CONNECTION_STRING}
+            BlogDotNet__Blog__Title: ${APP_SECRETS__BLOG_TITLE}
             BlogDotNet__FileScanner__BasePath: "/blogdotnet/files"
             BlogDotNet__Migrations__PostgresAdminConnectionString: ${APP_SECRETS__POSTGRES_ADMIN_CONNECTION_STRING}
             BlogDotNet__Migrations__Database: ${APP_SECRETS__POSTGRES_DB}

@@ -7,9 +7,9 @@ namespace BlogDotNet.Database;
 /// BlogDotNet database context
 /// </summary>
 /// <param name="databaseSettings">Database settings</param>
-public class BlogDotNetContext(DatabaseSettings databaseSettings) : DbContext
+public class BlogDotNetContext(DatabaseOptions databaseSettings) : DbContext
 {
-    private readonly DatabaseSettings _databaseSettings = databaseSettings;
+    private readonly DatabaseOptions _databaseSettings = databaseSettings;
 
     /// <inheritdoc/>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

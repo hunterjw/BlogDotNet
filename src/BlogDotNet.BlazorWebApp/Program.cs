@@ -24,6 +24,13 @@ AddDataServices(builder.Services, config);
 AddMigrations(builder.Services, config);
 AddDatabase(builder.Services, config);
 
+builder.Services.AddSingleton(
+    config
+        .GetRequiredSection("BlogDotNet")
+        .GetRequiredSection("Blog")
+        .Get<BlogOptions>()
+        ?? new BlogOptions());
+
 builder.Services.AddScoped<TimeProvider, BrowserTimeProvider>();
 
 builder.Services.AddHostedService<StartupWorker>();
@@ -73,7 +80,7 @@ static void AddMigrations(IServiceCollection services, IConfiguration config)
 
 static void AddDatabase(IServiceCollection services, IConfiguration config)
 {
-    services.AddSingleton(new DatabaseSettings
+    services.AddSingleton(new DatabaseOptions
     {
         ConnectionString = config.GetConnectionString("BlogDotNet") ?? string.Empty,
     });
