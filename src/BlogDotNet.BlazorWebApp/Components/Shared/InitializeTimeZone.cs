@@ -20,7 +20,8 @@ public sealed class InitializeTimeZone : ComponentBase
             {
                 await using var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./timezone.js");
                 var timeZone = await module.InvokeAsync<string>("getBrowserTimeZone");
-                browserTimeProvider.SetBrowserTimeZone(timeZone);
+                var locale = await module.InvokeAsync<string>("getBrowserLocale");
+                browserTimeProvider.SetBrowserTimeZone(timeZone, locale);
             }
             catch (JSDisconnectedException)
             {

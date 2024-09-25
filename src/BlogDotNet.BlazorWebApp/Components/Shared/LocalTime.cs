@@ -1,6 +1,7 @@
 ﻿using BlogDotNet.BlazorWebApp.Extensions;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components;
+using System.Globalization;
 
 namespace BlogDotNet.BlazorWebApp.Components.Shared;
 
@@ -30,7 +31,13 @@ public sealed class LocalTime : ComponentBase, IDisposable
     {
         if (DateTime != null)
         {
-            builder.AddContent(0, TimeProvider.ToLocalDateTime(DateTime.Value).ToString("g"));
+            DateTime localDateTime = TimeProvider.ToLocalDateTime(DateTime.Value);
+            CultureInfo cultureInfo = CultureInfo.InvariantCulture;
+            if (TimeProvider is BrowserTimeProvider browserTimeProvider)
+            {
+                cultureInfo = browserTimeProvider.LocalCultureInfo;
+            }
+            builder.AddContent(0, localDateTime.ToString("g", cultureInfo));
         }
     }
 
