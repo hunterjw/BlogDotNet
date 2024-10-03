@@ -14,13 +14,14 @@ public partial class Post
 
     public BlogPost? BlogPost { get; set; }
 
+    public bool NotFound { get; set; }
+
     protected override async Task OnParametersSetAsync()
     {
-        if (BlogPostService == null || string.IsNullOrWhiteSpace(Slug))
+        if (BlogPostService != null && !string.IsNullOrWhiteSpace(Slug))
         {
-            return;
+            BlogPost = await BlogPostService.GetBlogPost(Slug);
         }
-
-        BlogPost = await BlogPostService.GetBlogPost(Slug);
+        NotFound = BlogPost == null;
     }
 }

@@ -3,11 +3,17 @@
 
 <InitializeTimeZone />
 
-@if (BlogPost == null)
+@if (NotFound)
 {
     <CustomPageTitle>@Slug</CustomPageTitle>
 
     <p>Nothing to see here</p>
+}
+else if (BlogPost == null)
+{
+    <CustomPageTitle>@Slug</CustomPageTitle>
+
+    <p>Loading...</p>
 }
 else
 {
