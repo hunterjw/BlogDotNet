@@ -44,14 +44,10 @@ public class FileScannerService(
             "*.blogpost.json",
             SearchOption.AllDirectories);
 
-        IEnumerable<string> toAdd = files.Where(_ => !existingsFiles.Contains(Path.GetRelativePath(_options.BasePath, _)));
-        foreach (string file in toAdd)
+        IEnumerable<BlogPost> toRemove = existingPosts.Where(_ => !files.Contains(Path.Combine(_options.BasePath, _.FilePath)));
+        foreach (BlogPost blogPost in toRemove)
         {
-            BlogPost? blogpost = await ScanFile(file);
-            if (blogpost != null)
-            {
-                await _blogPostService.AddBlogPost(blogpost);
-            }
+            await _blogPostService.DeleteBlogPost(blogPost);
         }
 
         IEnumerable<BlogPost> toUpdate = existingPosts.Where(_ => files.Contains(Path.Combine(_options.BasePath, _.FilePath)));
@@ -68,10 +64,14 @@ public class FileScannerService(
             await _blogPostService.UpdateBlogPost(updated);
         }
 
-        IEnumerable<BlogPost> toRemove = existingPosts.Where(_ => !files.Contains(Path.Combine(_options.BasePath, _.FilePath)));
-        foreach (BlogPost blogPost in toRemove)
+        IEnumerable<string> toAdd = files.Where(_ => !existingsFiles.Contains(Path.GetRelativePath(_options.BasePath, _)));
+        foreach (string file in toAdd)
         {
-            await _blogPostService.DeleteBlogPost(blogPost);
+            BlogPost? blogpost = await ScanFile(file);
+            if (blogpost != null)
+            {
+                await _blogPostService.AddBlogPost(blogpost);
+            }
         }
     }
 
