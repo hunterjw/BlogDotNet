@@ -11,23 +11,33 @@ public class StartupWorker(IServiceProvider serviceProvider) : IHostedService
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
 
+    private AsyncServiceScope _scope;
+    private IFileWatcherService? _fileWatcherService;
+
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await using var scope = _serviceProvider.CreateAsyncScope();
+        _scope = _serviceProvider.CreateAsyncScope();
+        _fileWatcherService = _scope.ServiceProvider.GetRequiredService<IFileWatcherService>();
 
         // Run migrations
-        MigrationService migrationsService = scope.ServiceProvider.GetRequiredService<MigrationService>();
+        MigrationService migrationsService = _scope.ServiceProvider.GetRequiredService<MigrationService>();
         migrationsService.RunMigrations();
 
         // Scan all files
-        IFileScannerService fileScanner = scope.ServiceProvider.GetRequiredService<IFileScannerService>();
-        await fileScanner.ScanAllFiles();
+        IFileScannerService fileScannerService = _scope.ServiceProvider.GetRequiredService<IFileScannerService>();
+        await fileScannerService.ScanAllFiles();
+
+        // Start watching for file changes
+        await _fileWatcherService.StartWatchingForFileChanges();
     }
 
     /// <inheritdoc/>
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        return Task.CompletedTask;
+        if (_fileWatcherService != null)
+        {
+            await _fileWatcherService.StopWatchingForFileChanges();
+        }
     }
 }

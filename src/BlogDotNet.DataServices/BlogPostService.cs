@@ -110,10 +110,26 @@ public class BlogPostService(
     }
 
     /// <inheritdoc/>
-    public async Task<BlogPost?> GetBlogPost(string slug)
+    public async Task<BlogPost?> GetBlogPostBySlug(string slug)
     {
         Db.BlogPost? result = await _blogDotNetContext.BlogPosts.FirstOrDefaultAsync(_ => _.Slug == slug);
         return _mapper.Map<BlogPost>(result);
+    }
+
+    /// <inheritdoc/>
+    public async Task<BlogPost?> GetBlogPostByFilePath(string filePath)
+    {
+        Db.BlogPost? result = await _blogDotNetContext.BlogPosts.FirstOrDefaultAsync(_ => _.FilePath == filePath);
+        return _mapper.Map<BlogPost>(result);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<BlogPost>> GetBlogPostsByContentFilePath(string contentFilePath)
+    {
+        List<Db.BlogPost> result = await _blogDotNetContext.BlogPosts
+            .Where(_ => _.FilePath == contentFilePath)
+            .ToListAsync();
+        return _mapper.Map<List<BlogPost>>(result);
     }
 
     /// <inheritdoc/>

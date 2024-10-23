@@ -31,7 +31,21 @@ public interface IBlogPostService
     /// </summary>
     /// <param name="slug">Post slug</param>
     /// <returns><see cref="BlogPost"/> if found, null otherwise</returns>
-    Task<BlogPost?> GetBlogPost(string slug);
+    Task<BlogPost?> GetBlogPostBySlug(string slug);
+
+    /// <summary>
+    /// Get a blog post by its file path
+    /// </summary>
+    /// <param name="filePath">File path</param>
+    /// <returns><see cref="BlogPost"/> if found, null otherwise</returns>
+    Task<BlogPost?> GetBlogPostByFilePath(string filePath);
+
+    /// <summary>
+    /// Get blog posts by content file path
+    /// </summary>
+    /// <param name="contentFilePath">File path</param>
+    /// <returns>List of <see cref="BlogPost"/></returns>
+    Task<IEnumerable<BlogPost>> GetBlogPostsByContentFilePath(string contentFilePath);
 
     /// <summary>
     /// Update a blog post

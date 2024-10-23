@@ -15,12 +15,14 @@ namespace BlogDotNet.DataServices;
 /// <param name="markdownPipeline">Markdown pipeline</param>
 /// <param name="mapper">Mapper</param>
 public class FileScannerService(
-    FileScannerServiceOptions options, 
+    FileScannerServiceOptions options,
     IBlogPostService blogPostService,
     MarkdownPipeline markdownPipeline,
-    IMapper mapper) 
+    IMapper mapper)
     : IFileScannerService
 {
+    private const string BlogPostFileExtension = ".blogpost.json";
+
     private readonly FileScannerServiceOptions _options = options;
     private readonly IBlogPostService _blogPostService = blogPostService;
     private readonly MarkdownPipeline _markdownPipeline = markdownPipeline;
@@ -41,7 +43,7 @@ public class FileScannerService(
 
         string[] files = Directory.GetFiles(
             _options.BasePath,
-            "*.blogpost.json",
+            $"*{BlogPostFileExtension}",
             SearchOption.AllDirectories);
 
         IEnumerable<BlogPost> toRemove = existingPosts.Where(_ => !files.Contains(Path.Combine(_options.BasePath, _.FilePath)));
@@ -75,6 +77,138 @@ public class FileScannerService(
         }
     }
 
+    /// <inheritdoc/>
+    public async Task ScanAddedFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+        {
+            throw new Exception("No base path specified for file scanning");
+        }
+
+        if (!filePath.EndsWith(BlogPostFileExtension))
+        {
+            return;
+        }
+
+        BlogPost? blogpost = await ScanFile(filePath);
+        if (blogpost != null)
+        {
+            await _blogPostService.AddBlogPost(blogpost);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task ScanUpdatedFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+        {
+            throw new Exception("No base path specified for file scanning");
+        }
+
+        IEnumerable<BlogPost> blogPosts = await GetBlogPostsByFilePath(filePath);
+        foreach (BlogPost blogPost in blogPosts)
+        {
+            BlogPost? scanned = await ScanFile(Path.Combine(_options.BasePath, blogPost.FilePath));
+            if (scanned == null)
+            {
+                continue;
+            }
+
+            scanned.Id = blogPost.Id;
+            BlogPost updated = _mapper.Map(scanned, blogPost);
+            await _blogPostService.UpdateBlogPost(updated);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task ScanRenamedFile(string oldFilePath, string newFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+        {
+            throw new Exception("No base path specified for file scanning");
+        }
+
+        string newRelativeFilePath = Path.GetRelativePath(_options.BasePath, newFilePath);
+
+        IEnumerable<BlogPost> blogPosts = await GetBlogPostsByFilePath(oldFilePath);
+        foreach (BlogPost blogPost in blogPosts)
+        {
+            if (oldFilePath.EndsWith(BlogPostFileExtension))
+            {
+                if (newRelativeFilePath.EndsWith(BlogPostFileExtension))
+                {
+                    blogPost.FilePath = newRelativeFilePath;
+                    await _blogPostService.UpdateBlogPost(blogPost);
+                }
+                else
+                {
+                    await _blogPostService.DeleteBlogPost(blogPost);
+                }
+            }
+            else
+            {
+                blogPost.ContentFilePath = newRelativeFilePath;
+                await _blogPostService.UpdateBlogPost(blogPost);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task ScanRemovedFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+        {
+            throw new Exception("No base path specified for file scanning");
+        }
+
+        IEnumerable<BlogPost> blogPosts = await GetBlogPostsByFilePath(filePath);
+        foreach (BlogPost blogPost in blogPosts)
+        {
+            if (filePath.EndsWith(BlogPostFileExtension))
+            {
+                await _blogPostService.DeleteBlogPost(blogPost);
+            }
+            else
+            {
+                blogPost.ContentMd = null;
+                blogPost.ContentHtml = null;
+                await _blogPostService.UpdateBlogPost(blogPost);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get blog posts that are linked to a file path
+    /// </summary>
+    /// <param name="filePath">File path to search for</param>
+    /// <returns>List of <see cref="BlogPost"/></returns>
+    private async Task<IEnumerable<BlogPost>> GetBlogPostsByFilePath(string filePath)
+    {
+        if (filePath == null || _options.BasePath == null)
+        {
+            return [];
+        }
+
+        string relativeFilePath = Path.GetRelativePath(_options.BasePath, filePath);
+
+        if (relativeFilePath.EndsWith(BlogPostFileExtension))
+        {
+            // Blog post file
+            BlogPost? blogPost = await _blogPostService.GetBlogPostByFilePath(relativeFilePath);
+            if (blogPost == null)
+            {
+                return [];
+            }
+
+            return [blogPost];
+        }
+        else
+        {
+            // Content file path
+            return await _blogPostService.GetBlogPostsByContentFilePath(relativeFilePath);
+        }
+    }
+
     /// <summary>
     /// Scan a blog post file
     /// </summary>
@@ -82,7 +216,7 @@ public class FileScannerService(
     /// <returns><see cref="BlogPost"/>, or null if scanning fails</returns>
     private async Task<BlogPost?> ScanFile(string? filePath)
     {
-        if (filePath == null || _options.BasePath == null)
+        if (filePath == null || _options.BasePath == null || !File.Exists(filePath))
         {
             return null;
         }
@@ -100,7 +234,12 @@ public class FileScannerService(
                 if (directory != null)
                 {
                     string contentFilePath = Path.Combine(directory, blogPost.ContentFilePath);
-                    blogPost.ContentMd = await File.ReadAllTextAsync(contentFilePath);
+                    blogPost.ContentFilePath = Path.GetRelativePath(_options.BasePath, contentFilePath);
+
+                    if (File.Exists(contentFilePath))
+                    {
+                        blogPost.ContentMd = await File.ReadAllTextAsync(contentFilePath);
+                    }
                 }
             }
 

@@ -63,6 +63,12 @@ static void AddDataServices(IServiceCollection services, IConfiguration config)
             .GetRequiredSection("FileScanner")
             .Get<FileScannerServiceOptions>()
             ?? new FileScannerServiceOptions());
+    services.AddSingleton(
+        config
+            .GetRequiredSection("BlogDotNet")
+            .GetRequiredSection("FileScanner")
+            .Get<FileWatcherServiceOptions>()
+            ?? new FileWatcherServiceOptions());
     services.AddBlogDotNetServices();
 }
 

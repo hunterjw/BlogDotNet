@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
             .AddAutoMapper(cfg =>
             {
                 cfg.AddProfile<AutoMapperProfile>();
-            });
+            })
+            .AddScoped<IFileWatcherService, FileWatcherService>();
     }
 }

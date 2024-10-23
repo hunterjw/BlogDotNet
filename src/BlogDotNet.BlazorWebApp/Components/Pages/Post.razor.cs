@@ -20,7 +20,7 @@ public partial class Post
     {
         if (BlogPostService != null && !string.IsNullOrWhiteSpace(Slug))
         {
-            BlogPost = await BlogPostService.GetBlogPost(Slug);
+            BlogPost = await BlogPostService.GetBlogPostBySlug(Slug);
         }
         NotFound = BlogPost == null;
     }
