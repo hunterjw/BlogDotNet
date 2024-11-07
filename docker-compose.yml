@@ -45,7 +45,7 @@ services:
             context: ./src
             dockerfile: ./BlogDotNet.BlazorWebApp/Dockerfile
         volumes:
-            - ./sample-data:/blogdotnet/files
+            - ${APP_SECRETS__BLOG_FILES}:/blogdotnet/files
 
 volumes:
     pgdata:
