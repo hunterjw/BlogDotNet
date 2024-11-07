@@ -6,7 +6,7 @@ A basic blog web app written in C#.
 
 ### Environment Variables
 
-Use the following environmet variables to configure the web app.
+Use the following environment variables to configure the web app.
 
 ```
 # Postgres configuration, you should probably change the passwords
@@ -31,7 +31,7 @@ APP_SECRETS__BLOG_FILES=./sample-data
 
 ### Docker Compose
 
-Running the following docker compose will start the web app on port 8082. Make sure to update the 
+Running the following docker compose will start the web app on port 8082.
 
 ```
 services:
@@ -72,6 +72,21 @@ services:
 
 volumes:
     pgdata:
+```
+
+### Blog file format
+
+Blog files are expected to be named with the pattern `*.blogpost.json`. Example blog file:
+
+```
+{
+	"Title": "Post Title", // The post title
+	"Description": "Post description.", // Post description
+	"PubDate": "1970-01-01T00:00:00.000Z", // Post publication date
+	
+	"Slug": "blog-post", // Blog post slug, used for generating post URL
+	"ContentFilePath": "content-file.md" // File path to a markdown file for the blog post content, relative to the blog file
+}
 ```
 
 ## Developing It
