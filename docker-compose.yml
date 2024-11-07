@@ -28,7 +28,7 @@ services:
         volumes:
             - pgadmindata:/var/lib/pgadmin
     webapp:
-        image: blogdotnet-webapp
+        image: ghcr.io/hunterjw/blogdotnet:latest
         depends_on:
             db:
                 condition: service_healthy
