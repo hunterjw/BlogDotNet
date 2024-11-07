@@ -41,8 +41,6 @@ services:
             POSTGRES_USER: ${APP_SECRETS__POSTGRES_ADMIN_USER}
             POSTGRES_PASSWORD: ${APP_SECRETS__POSTGRES_ADMIN_PASSWORD}
             POSTGRES_DB: ${APP_SECRETS__POSTGRES_ADMIN_DB}
-        ports:
-            - "5432:5432"
         volumes:
             - pgdata:/var/lib/postgresql/data
         healthcheck:
