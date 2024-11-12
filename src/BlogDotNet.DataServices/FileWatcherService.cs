@@ -1,6 +1,8 @@
 ﻿using BlogDotNet.DataServices.Abstractions.Interfaces;
 using BlogDotNet.DataServices.Models;
 using Microsoft.Extensions.Logging;
+using Polly.Retry;
+using Polly;
 
 namespace BlogDotNet.DataServices;
 
@@ -11,9 +13,20 @@ public class FileWatcherService : IFileWatcherService
 {
     private readonly ILogger<FileWatcherService> _logger;
     private readonly IFileScannerService _fileScannerService;
+    private readonly string? _basePath;
 
-    private readonly FileSystemWatcher _fileSystemWatcher;
     private readonly BackgroundQueue<FileSystemEventArgs> _backgroundQueue;
+    private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
+        .AddRetry(new RetryStrategyOptions
+        {
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            MaxRetryAttempts = int.MaxValue,
+            Delay = TimeSpan.FromSeconds(1),
+        })
+        .Build();
+
+    private FileSystemWatcher? _fileSystemWatcher;
 
     /// <summary>
     /// Constructor
@@ -28,20 +41,9 @@ public class FileWatcherService : IFileWatcherService
     {
         _logger = logger;
         _fileScannerService = fileScannerService;
+        _basePath = options.BasePath;
 
-        _fileSystemWatcher = new FileSystemWatcher();
-        if (!string.IsNullOrWhiteSpace(options.BasePath))
-        {
-            _fileSystemWatcher.Path = options.BasePath;
-        }
-        _fileSystemWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
-        _fileSystemWatcher.Changed += OnChanged;
-        _fileSystemWatcher.Created += OnCreated;
-        _fileSystemWatcher.Deleted += OnDeleted;
-        _fileSystemWatcher.Renamed += OnRenamed;
-        _fileSystemWatcher.Error += OnError;
-        _fileSystemWatcher.Filter = "*.*";
-        _fileSystemWatcher.IncludeSubdirectories = true;
+        _fileSystemWatcher = BuildWatcher(options.BasePath);
 
         _backgroundQueue = new BackgroundQueue<FileSystemEventArgs>(logger, HandleFileSystemEvent);
     }
@@ -49,17 +51,51 @@ public class FileWatcherService : IFileWatcherService
     /// <inheritdoc/>
     public Task StartWatchingForFileChanges()
     {
-        _fileSystemWatcher.EnableRaisingEvents = true;
-        _logger.LogInformation("Watching for file changes");
+        StartWatchingForFileChangesInternal();
         return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
     public Task StopWatchingForFileChanges()
     {
-        _logger.LogInformation("Stopping file watching");
-        _fileSystemWatcher.EnableRaisingEvents = false;
+        StopWatchingForFileChangesInternal();
         return Task.CompletedTask;
+    }
+
+    private FileSystemWatcher BuildWatcher(string? basePath)
+    {
+        FileSystemWatcher watcher = new();
+        if (!string.IsNullOrWhiteSpace(basePath))
+        {
+            watcher.Path = basePath;
+        }
+        watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
+        watcher.Changed += OnChanged;
+        watcher.Created += OnCreated;
+        watcher.Deleted += OnDeleted;
+        watcher.Renamed += OnRenamed;
+        watcher.Error += OnError;
+        watcher.Filter = "*.*";
+        watcher.IncludeSubdirectories = true;
+
+        return watcher;
+    }
+
+    private void StartWatchingForFileChangesInternal()
+    {
+        if (_fileSystemWatcher != null)
+        {
+            _fileSystemWatcher.EnableRaisingEvents = true;
+            _logger.LogInformation("Watching for file changes");
+        }
+    }
+    public void StopWatchingForFileChangesInternal()
+    {
+        if (_fileSystemWatcher != null)
+        {
+            _logger.LogInformation("Stopping file watching");
+            _fileSystemWatcher.EnableRaisingEvents = false;
+        }
     }
 
     private void OnChanged(object sender, FileSystemEventArgs e)
@@ -76,18 +112,39 @@ public class FileWatcherService : IFileWatcherService
     {
         _backgroundQueue.Enqueue(e);
     }
-    
+
     private void OnRenamed(object sender, RenamedEventArgs e)
     {
         _backgroundQueue.Enqueue(e);
     }
 
-    private void OnError(object sender, ErrorEventArgs e) =>
-        PrintException(e.GetException());
-
-    private void PrintException(Exception? ex)
+    private void OnError(object sender, ErrorEventArgs e)
     {
-        _logger.LogError(ex, "File watcher error");
+        _logger.LogError(e.GetException(), "File watcher error");
+
+        StopWatchingForFileChangesInternal();
+        _fileSystemWatcher = null;
+
+        _resiliencePipeline.Execute(() =>
+        {
+            _fileSystemWatcher = BuildWatcher(_basePath);
+            StartWatchingForFileChangesInternal();
+
+            _logger.LogInformation("Recovered from file watcher error");
+        });
+
+        _ = Task.Run(async () =>
+        {
+            _logger.LogInformation("Full scan required to pick up missed file changes");
+
+            _logger.LogInformation("Waiting 5 seconds for file system to settle down...");
+            await Task.Delay(5000);
+
+            _logger.LogInformation("Rescanning all files...");
+            await _fileScannerService.ScanAllFiles();
+
+            _logger.LogInformation("Scan complete!");
+        });
     }
 
     private async Task HandleFileSystemEvent(FileSystemEventArgs e)

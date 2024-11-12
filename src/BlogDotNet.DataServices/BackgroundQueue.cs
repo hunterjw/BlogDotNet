@@ -22,7 +22,6 @@ internal class BackgroundQueue<T>(ILogger logger, Func<T, Task> processFunc)
     private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
         .AddRetry(new RetryStrategyOptions
         {
-            ShouldHandle = new PredicateBuilder().Handle<IOException>(),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,  
             MaxRetryAttempts = 4,
