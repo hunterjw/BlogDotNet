@@ -127,7 +127,7 @@ public class BlogPostService(
     public async Task<IEnumerable<BlogPost>> GetBlogPostsByContentFilePath(string contentFilePath)
     {
         List<Db.BlogPost> result = await _blogDotNetContext.BlogPosts
-            .Where(_ => _.FilePath == contentFilePath)
+            .Where(_ => _.ContentFilePath == contentFilePath)
             .ToListAsync();
         return _mapper.Map<List<BlogPost>>(result);
     }
