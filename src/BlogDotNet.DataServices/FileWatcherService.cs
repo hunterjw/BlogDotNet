@@ -1,8 +1,8 @@
 ﻿using BlogDotNet.DataServices.Abstractions.Interfaces;
 using BlogDotNet.DataServices.Models;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
-using Polly.Retry;
-using Polly;
+using Microsoft.Extensions.Primitives;
 
 namespace BlogDotNet.DataServices;
 
@@ -11,22 +11,15 @@ namespace BlogDotNet.DataServices;
 /// </summary>
 public class FileWatcherService : IFileWatcherService
 {
+    private readonly FileWatcherServiceOptions _options;
     private readonly ILogger<FileWatcherService> _logger;
     private readonly IFileScannerService _fileScannerService;
-    private readonly string? _basePath;
 
-    private readonly BackgroundQueue<FileSystemEventArgs> _backgroundQueue;
-    private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
-        .AddRetry(new RetryStrategyOptions
-        {
-            BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true,
-            MaxRetryAttempts = int.MaxValue,
-            Delay = TimeSpan.FromSeconds(1),
-        })
-        .Build();
+    private readonly BackgroundQueue<FileChanged> _backgroundQueue;
 
-    private FileSystemWatcher? _fileSystemWatcher;
+    private PhysicalFileProvider? _physicalFileProvider;
+    private IChangeToken? _changeToken;
+    private bool _watchForChanges = false;
 
     /// <summary>
     /// Constructor
@@ -39,132 +32,140 @@ public class FileWatcherService : IFileWatcherService
         ILogger<FileWatcherService> logger,
         IFileScannerService fileScannerService)
     {
+        _options = options;
         _logger = logger;
         _fileScannerService = fileScannerService;
-        _basePath = options.BasePath;
 
-        _fileSystemWatcher = BuildWatcher(options.BasePath);
-
-        _backgroundQueue = new BackgroundQueue<FileSystemEventArgs>(logger, HandleFileSystemEvent);
+        _backgroundQueue = new BackgroundQueue<FileChanged>(logger, HandleChangedFile);
     }
 
     /// <inheritdoc/>
     public Task StartWatchingForFileChanges()
     {
-        StartWatchingForFileChangesInternal();
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+        {
+            throw new Exception("Missing base path configuration for file watcher");
+        }
+
+        _physicalFileProvider = new PhysicalFileProvider(_options.BasePath)
+        {
+            UsePollingFileWatcher = true,
+            UseActivePolling = true,
+        };
+
+        _watchForChanges = true;
+        WatchForChanges(GetDirectoryFiles());
+
+        _logger.LogInformation("Watching for file changes");
+
         return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
     public Task StopWatchingForFileChanges()
     {
-        StopWatchingForFileChangesInternal();
+        _logger.LogInformation("Stopping file watching");
+
+        _watchForChanges = false;
+
         return Task.CompletedTask;
     }
 
-    private FileSystemWatcher BuildWatcher(string? basePath)
+    private void WatchForChanges(IEnumerable<IFileInfo> currentState)
     {
-        FileSystemWatcher watcher = new();
-        if (!string.IsNullOrWhiteSpace(basePath))
-        {
-            watcher.Path = basePath;
-        }
-        watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
-        watcher.Changed += OnChanged;
-        watcher.Created += OnCreated;
-        watcher.Deleted += OnDeleted;
-        watcher.Renamed += OnRenamed;
-        watcher.Error += OnError;
-        watcher.Filter = "*.*";
-        watcher.IncludeSubdirectories = true;
-
-        return watcher;
+        _changeToken = _physicalFileProvider?.Watch("**.*");
+        _changeToken?.RegisterChangeCallback(Notify, currentState);
     }
 
-    private void StartWatchingForFileChangesInternal()
+    private void Notify(object? state)
     {
-        if (_fileSystemWatcher != null)
+        _logger.LogInformation($"File change detected");
+
+        if (_watchForChanges)
         {
-            _fileSystemWatcher.EnableRaisingEvents = true;
-            _logger.LogInformation("Watching for file changes");
-        }
-    }
-    public void StopWatchingForFileChangesInternal()
-    {
-        if (_fileSystemWatcher != null)
-        {
-            _logger.LogInformation("Stopping file watching");
-            _fileSystemWatcher.EnableRaisingEvents = false;
+            List<IFileInfo> currentState = GetDirectoryFiles();
+            WatchForChanges(currentState);
+
+            EnqueueChangedFiles(currentState, state as List<IFileInfo> ?? []);
         }
     }
 
-    private void OnChanged(object sender, FileSystemEventArgs e)
+    private List<IFileInfo> GetDirectoryFiles(string subDirectory = "")
     {
-        _backgroundQueue.Enqueue(e);
-    }
+        List<IFileInfo> toReturn = [];
 
-    private void OnCreated(object sender, FileSystemEventArgs e)
-    {
-        _backgroundQueue.Enqueue(e);
-    }
-
-    private void OnDeleted(object sender, FileSystemEventArgs e)
-    {
-        _backgroundQueue.Enqueue(e);
-    }
-
-    private void OnRenamed(object sender, RenamedEventArgs e)
-    {
-        _backgroundQueue.Enqueue(e);
-    }
-
-    private void OnError(object sender, ErrorEventArgs e)
-    {
-        _logger.LogError(e.GetException(), "File watcher error");
-
-        StopWatchingForFileChangesInternal();
-        _fileSystemWatcher = null;
-
-        _resiliencePipeline.Execute(() =>
+        IDirectoryContents? directoryContents = _physicalFileProvider?.GetDirectoryContents(subDirectory);
+        toReturn.AddRange(directoryContents?.Where(_ => !_.IsDirectory) ?? []);
+        foreach (IFileInfo? directory in directoryContents?.Where(_ => _.IsDirectory) ?? [])
         {
-            _fileSystemWatcher = BuildWatcher(_basePath);
-            StartWatchingForFileChangesInternal();
+            toReturn.AddRange(GetDirectoryFiles(Path.Combine(subDirectory, directory.Name)));
+        }
 
-            _logger.LogInformation("Recovered from file watcher error");
+        return toReturn;
+    }
+
+    private void EnqueueChangedFiles(List<IFileInfo> currentState, List<IFileInfo> previousState)
+    {
+        IEnumerable<IFileInfo> removed = previousState.Where(ps => !currentState.Any(cs => ps.PhysicalPath == cs.PhysicalPath));
+        foreach (IFileInfo file in removed)
+        {
+            _backgroundQueue.Enqueue(new FileChanged
+            {
+                ChangeType = FileChangeType.Deleted,
+                FullPath = file.PhysicalPath,
+            });
+        }
+
+        IEnumerable<IFileInfo> updated = previousState.Where(previousFile =>
+        {
+            IFileInfo? currentFile = currentState.FirstOrDefault(_ => _.PhysicalPath == previousFile.PhysicalPath);
+
+            return currentFile != null && (currentFile.Length != previousFile.Length || currentFile.LastModified != previousFile.LastModified);
         });
-
-        _ = Task.Run(async () =>
+        foreach (IFileInfo file in updated)
         {
-            _logger.LogInformation("Full scan required to pick up missed file changes");
+            _backgroundQueue.Enqueue(new FileChanged
+            {
+                ChangeType = FileChangeType.Updated,
+                FullPath = file.PhysicalPath,
+            });
+        }
 
-            _logger.LogInformation("Waiting 5 seconds for file system to settle down...");
-            await Task.Delay(5000);
-
-            _logger.LogInformation("Rescanning all files...");
-            await _fileScannerService.ScanAllFiles();
-
-            _logger.LogInformation("Scan complete!");
-        });
+        IEnumerable<IFileInfo> added = currentState.Where(cs => !previousState.Any(ps => ps.PhysicalPath == cs.PhysicalPath));
+        foreach (IFileInfo file in added)
+        {
+            _backgroundQueue.Enqueue(new FileChanged
+            {
+                ChangeType = FileChangeType.Created,
+                FullPath = file.PhysicalPath,
+            });
+        }
     }
 
-    private async Task HandleFileSystemEvent(FileSystemEventArgs e)
+    private async Task HandleChangedFile(FileChanged fileChanged)
     {
-        switch (e.ChangeType)
+        if (string.IsNullOrWhiteSpace(fileChanged.FullPath))
         {
-            case WatcherChangeTypes.Created:
-                await _fileScannerService.ScanAddedFile(e.FullPath);
+            _logger.LogWarning("Blank file changed path");
+            return;
+        }
+
+        switch (fileChanged.ChangeType)
+        {
+            case FileChangeType.Created:
+                _logger.LogInformation("File created: {fullPath}", fileChanged.FullPath);
+                await _fileScannerService.ScanAddedFile(fileChanged.FullPath);
                 break;
-            case WatcherChangeTypes.Changed:
-                await _fileScannerService.ScanUpdatedFile(e.FullPath);
+            case FileChangeType.Updated:
+                _logger.LogInformation("File updated: {fullPath}", fileChanged.FullPath);
+                await _fileScannerService.ScanUpdatedFile(fileChanged.FullPath);
                 break;
-            case WatcherChangeTypes.Renamed:
-                RenamedEventArgs re = (RenamedEventArgs)e;
-                await _fileScannerService.ScanRenamedFile(re.OldFullPath, re.FullPath);
-                break;
-            case WatcherChangeTypes.Deleted:
-                await _fileScannerService.ScanRemovedFile(e.FullPath);
+            case FileChangeType.Deleted:
+                _logger.LogInformation("File deleted: {fullPath}", fileChanged.FullPath);
+                await _fileScannerService.ScanRemovedFile(fileChanged.FullPath);
                 break;
             default:
+                _logger.LogWarning("Unknown file change type {chengeType} for file {fullPath}", fileChanged.ChangeType, fileChanged.FullPath);
                 break;
         }
     }

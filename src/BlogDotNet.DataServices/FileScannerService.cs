@@ -121,39 +121,6 @@ public class FileScannerService(
     }
 
     /// <inheritdoc/>
-    public async Task ScanRenamedFile(string oldFilePath, string newFilePath)
-    {
-        if (string.IsNullOrWhiteSpace(_options.BasePath))
-        {
-            throw new Exception("No base path specified for file scanning");
-        }
-
-        string newRelativeFilePath = Path.GetRelativePath(_options.BasePath, newFilePath);
-
-        IEnumerable<BlogPost> blogPosts = await GetBlogPostsByFilePath(oldFilePath);
-        foreach (BlogPost blogPost in blogPosts)
-        {
-            if (oldFilePath.EndsWith(BlogPostFileExtension))
-            {
-                if (newRelativeFilePath.EndsWith(BlogPostFileExtension))
-                {
-                    blogPost.FilePath = newRelativeFilePath;
-                    await _blogPostService.UpdateBlogPost(blogPost);
-                }
-                else
-                {
-                    await _blogPostService.DeleteBlogPost(blogPost);
-                }
-            }
-            else
-            {
-                blogPost.ContentFilePath = newRelativeFilePath;
-                await _blogPostService.UpdateBlogPost(blogPost);
-            }
-        }
-    }
-
-    /// <inheritdoc/>
     public async Task ScanRemovedFile(string filePath)
     {
         if (string.IsNullOrWhiteSpace(_options.BasePath))

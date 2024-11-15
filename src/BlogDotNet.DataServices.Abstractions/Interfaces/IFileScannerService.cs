@@ -20,13 +20,6 @@ public interface IFileScannerService
     Task ScanUpdatedFile(string filePath);
 
     /// <summary>
-    /// Scan a renamed file
-    /// </summary>
-    /// <param name="oldFilePath">Old file path</param>
-    /// <param name="newFilePath">New file path</param>
-    Task ScanRenamedFile(string oldFilePath, string newFilePath);
-
-    /// <summary>
     /// Scan a removed file
     /// </summary>
     /// <param name="filePath">File path</param>
