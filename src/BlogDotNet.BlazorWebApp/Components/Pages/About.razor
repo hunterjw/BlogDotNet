@@ -1,0 +1,25 @@
+﻿@page "/about"
+
+<CustomPageTitle>About</CustomPageTitle>
+
+@if (NotFound)
+{
+    <p>Nothing to see here</p>
+}
+else if (BlogPost == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h1>
+        About
+    </h1>
+
+    <hr />
+
+    @if (!string.IsNullOrWhiteSpace(BlogPost.ContentHtml))
+    {
+        @((MarkupString)BlogPost.ContentHtml)
+    }
+}

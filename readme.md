@@ -87,6 +87,10 @@ Blog files are expected to be named with the pattern `*.blogpost.json`. Example 
 }
 ```
 
+### About page
+
+Blog posts with the slug `about` will act as the about page for the blog. Properties other than ones relating to the post content will be ignored as they will not be displayed.
+
 ## Developing It
 
-Source code lives in `/src`. To build the web app container locally, run `docker compose build` from the root of the repository. To run the web app container locally, run `docker compose up -d`. Confiuration for the development environment can be found in the `.env` file and the sample data lives in `/sample-data`. 
+Source code lives in `/src`. To build the web app container locally, run `docker compose build` from the root of the repository. To run the web app container locally, run `docker compose up -d`. Configuration for the development environment can be found in the `.env` file and the sample data lives in `/sample-data`. 

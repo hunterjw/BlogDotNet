@@ -9,6 +9,12 @@
                 <li class="nav-item">
                     <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
                 </li>
+                @if (HasAboutPage)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="about" Match="NavLinkMatch.Prefix">About</NavLink>
+                    </li>
+                }
             </ul>
         </div>
     </div>

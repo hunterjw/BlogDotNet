@@ -4,13 +4,10 @@ using Microsoft.AspNetCore.Components;
 
 namespace BlogDotNet.BlazorWebApp.Components.Pages;
 
-public partial class Post
+public partial class About
 {
     [Inject]
     public IBlogPostService? BlogPostService { get; set; }
-
-    [Parameter]
-    public string? Slug { get; set; }
 
     public BlogPost? BlogPost { get; set; }
 
@@ -18,9 +15,9 @@ public partial class Post
 
     protected override async Task OnParametersSetAsync()
     {
-        if (BlogPostService != null && !string.IsNullOrWhiteSpace(Slug) && Slug != "about")
+        if (BlogPostService != null)
         {
-            BlogPost = await BlogPostService.GetBlogPostBySlug(Slug);
+            BlogPost = await BlogPostService.GetBlogPostBySlug("about");
         }
         NotFound = BlogPost == null;
     }

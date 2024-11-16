@@ -59,4 +59,10 @@ public interface IBlogPostService
     /// </summary>
     /// <param name="blogPost">Post to delete</param>
     Task DeleteBlogPost(BlogPost blogPost);
+
+    /// <summary>
+    /// Checks to see if there is a blog post with the slug "about"
+    /// </summary>
+    /// <returns>True if there is an about page, false otherwsie</returns>
+    Task<bool> HasAboutPage();
 }

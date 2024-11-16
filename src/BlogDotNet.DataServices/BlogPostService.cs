@@ -38,6 +38,8 @@ public class BlogPostService(
     {
         List<Db.BlogPost>? blogPosts = null;
 
+        IQueryable<Db.BlogPost> query = _blogDotNetContext.BlogPosts.Where(_ => _.Slug != "about");
+
         // Pagination
         if (after != null)
         {
@@ -45,7 +47,7 @@ public class BlogPostService(
                 throw new ArgumentException($"Cannot find post with ID {after}", nameof(after));
             blogPosts =
             [
-                .. await _blogDotNetContext.BlogPosts
+                .. await query
                     .Where(_ => _.PubDate < afterPost.PubDate)
                     .OrderByDescending(_ => _.PubDate)
                     .Take(take)
@@ -58,7 +60,7 @@ public class BlogPostService(
                 throw new ArgumentException($"Cannot find post with ID {before}", nameof(before));
             blogPosts =
             [
-                .. await _blogDotNetContext.BlogPosts
+                .. await query
                     .Where(_ => _.PubDate > beforePost.PubDate)
                     .OrderBy(_ => _.PubDate)
                     .Take(take)
@@ -70,7 +72,7 @@ public class BlogPostService(
             // default
             blogPosts ??=
             [
-                .. await _blogDotNetContext.BlogPosts
+                .. await query
                     .OrderByDescending(_ => _.PubDate)
                     .Take(take)
                     .ToListAsync()
@@ -161,5 +163,11 @@ public class BlogPostService(
 
         _blogDotNetContext.Remove(toRemove);
         await _blogDotNetContext.SaveChangesAsync();
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> HasAboutPage()
+    {
+        return Task.FromResult(_blogDotNetContext.BlogPosts.Any(_ => _.Slug == "about"));
     }
 }
