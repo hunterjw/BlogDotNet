@@ -83,7 +83,8 @@ Blog files are expected to be named with the pattern `*.blogpost.json`. Example 
 	"PubDate": "1970-01-01T00:00:00.000Z", // Post publication date
 	
 	"Slug": "blog-post", // Blog post slug, used for generating post URL
-	"ContentFilePath": "content-file.md" // File path to a markdown file for the blog post content, relative to the blog file
+	"ContentFilePath": "content-file.md", // File path to a markdown file for the blog post content, relative to the blog file
+	"Pinned": false // Set to true to pin the post to the top of the homepage
 }
 ```
 

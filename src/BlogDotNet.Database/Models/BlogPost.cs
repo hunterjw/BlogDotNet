@@ -64,4 +64,10 @@ public class BlogPost
     /// </summary>
     [Column("content_html")]
     public string? ContentHtml { get; set; }
+
+    /// <summary>
+    /// If the post is pinned or not
+    /// </summary>
+    [Column("pinned")]
+    public bool Pinned { get; set; } = false;
 }

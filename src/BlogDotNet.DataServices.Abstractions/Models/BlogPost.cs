@@ -48,4 +48,9 @@ public class BlogPost
     /// Content in HTML
     /// </summary>
     public string? ContentHtml { get; set; }
+
+    /// <summary>
+    /// If the post is pinned or not
+    /// </summary>
+    public bool Pinned { get; set; } = false;
 }

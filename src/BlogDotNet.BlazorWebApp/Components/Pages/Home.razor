@@ -19,7 +19,7 @@ else
     {
         foreach (var blogPost in BlogPosts.Items)
         {
-            <div class="pb-3">
+            <div>
                 <NavLink href="@($"/post/{blogPost.Slug}")">
                     <h2>
                         @blogPost.Title
@@ -31,7 +31,14 @@ else
                 <div>
                     @blogPost.Description
                 </div>
+                @if (blogPost.Pinned)
+                {
+                    <div>
+                        <span class="badge text-bg-success">Pinned</span>
+                    </div>
+                }
             </div>
+            <hr />
         }
     }
 

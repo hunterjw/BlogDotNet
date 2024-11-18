@@ -38,12 +38,12 @@ public class BlogPostService(
     {
         List<Db.RankedBlogPost>? blogPosts = null;
 
-        IQueryable<Db.RankedBlogPost> query = _blogDotNetContext.RankedBlogPosts;
+        IQueryable<Db.RankedBlogPost> query = _blogDotNetContext.RankedBlogPosts.Where(_ => _.Slug != "about");
 
         // Pagination
         if (after != null)
         {
-            Db.RankedBlogPost afterPost = await _blogDotNetContext.RankedBlogPosts.FirstOrDefaultAsync(_ => _.Id == after) ??
+            Db.RankedBlogPost afterPost = await query.FirstOrDefaultAsync(_ => _.Id == after) ??
                 throw new ArgumentException($"Cannot find post with ID {after}", nameof(after));
             blogPosts =
             [
@@ -56,7 +56,7 @@ public class BlogPostService(
         }
         else if (before != null)
         {
-            Db.RankedBlogPost beforePost = await _blogDotNetContext.RankedBlogPosts.FirstOrDefaultAsync(_ => _.Id == before) ??
+            Db.RankedBlogPost beforePost = await query.FirstOrDefaultAsync(_ => _.Id == before) ??
                 throw new ArgumentException($"Cannot find post with ID {before}", nameof(before));
             blogPosts =
             [
@@ -87,13 +87,13 @@ public class BlogPostService(
         Db.RankedBlogPost? firstItem = results.FirstOrDefault();
         if (firstItem != null)
         {
-            showBefore = await _blogDotNetContext.RankedBlogPosts.AnyAsync(_ => _.Rank < firstItem.Rank);
+            showBefore = await query.AnyAsync(_ => _.Rank < firstItem.Rank);
         }
         bool showAfter = false;
         Db.RankedBlogPost? lastItem = results.LastOrDefault();
         if (lastItem != null)
         {
-            showAfter = await _blogDotNetContext.RankedBlogPosts.AnyAsync(_ => _.Rank > lastItem.Rank);
+            showAfter = await query.AnyAsync(_ => _.Rank > lastItem.Rank);
         }
         return new Listing<BlogPost>
         {
