@@ -17,8 +17,25 @@ public class BlogDotNetContext(DatabaseOptions databaseSettings) : DbContext
         optionsBuilder.UseNpgsql(_databaseSettings.ConnectionString);
     }
 
+    /// <inheritdoc/>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder
+            .Entity<RankedBlogPost>(
+                eb =>
+                {
+                    eb.HasNoKey();
+                    eb.ToView("view_ranked_blog_post", "blogdotnet");
+                });
+    }
+
     /// <summary>
     /// Blog posts
     /// </summary>
     public DbSet<BlogPost> BlogPosts { get; set; }
+
+    /// <summary>
+    /// Ranked blog posts
+    /// </summary>
+    public DbSet<RankedBlogPost> RankedBlogPosts { get; set; }
 }

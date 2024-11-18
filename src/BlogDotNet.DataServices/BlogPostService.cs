@@ -36,33 +36,33 @@ public class BlogPostService(
     /// <inheritdoc/>
     public async Task<Listing<BlogPost>> GetBlogPosts(int take = 25, Guid? after = null, Guid? before = null)
     {
-        List<Db.BlogPost>? blogPosts = null;
+        List<Db.RankedBlogPost>? blogPosts = null;
 
-        IQueryable<Db.BlogPost> query = _blogDotNetContext.BlogPosts.Where(_ => _.Slug != "about");
+        IQueryable<Db.RankedBlogPost> query = _blogDotNetContext.RankedBlogPosts;
 
         // Pagination
         if (after != null)
         {
-            Db.BlogPost afterPost = await _blogDotNetContext.BlogPosts.FirstOrDefaultAsync(_ => _.Id == after) ??
+            Db.RankedBlogPost afterPost = await _blogDotNetContext.RankedBlogPosts.FirstOrDefaultAsync(_ => _.Id == after) ??
                 throw new ArgumentException($"Cannot find post with ID {after}", nameof(after));
             blogPosts =
             [
                 .. await query
-                    .Where(_ => _.PubDate < afterPost.PubDate)
-                    .OrderByDescending(_ => _.PubDate)
+                    .Where(_ => _.Rank > afterPost.Rank)
+                    .OrderBy(_ => _.Rank)
                     .Take(take)
                     .ToListAsync()
             ];
         }
         else if (before != null)
         {
-            Db.BlogPost beforePost = await _blogDotNetContext.BlogPosts.FirstOrDefaultAsync(_ => _.Id == before) ??
+            Db.RankedBlogPost beforePost = await _blogDotNetContext.RankedBlogPosts.FirstOrDefaultAsync(_ => _.Id == before) ??
                 throw new ArgumentException($"Cannot find post with ID {before}", nameof(before));
             blogPosts =
             [
                 .. await query
-                    .Where(_ => _.PubDate > beforePost.PubDate)
-                    .OrderBy(_ => _.PubDate)
+                    .Where(_ => _.Rank < beforePost.Rank)
+                    .OrderByDescending(_ => _.Rank)
                     .Take(take)
                     .ToListAsync()
             ];
@@ -73,27 +73,27 @@ public class BlogPostService(
             blogPosts ??=
             [
                 .. await query
-                    .OrderByDescending(_ => _.PubDate)
+                    .OrderBy(_ => _.Rank)
                     .Take(take)
                     .ToListAsync()
             ];
         }
 
-        List<Db.BlogPost> results =
+        List<Db.RankedBlogPost> results =
         [
-            .. blogPosts.OrderByDescending(_ => _.PubDate)
+            .. blogPosts.OrderBy(_ => _.Rank)
         ];
         bool showBefore = false;
-        Db.BlogPost? firstItem = results.FirstOrDefault();
+        Db.RankedBlogPost? firstItem = results.FirstOrDefault();
         if (firstItem != null)
         {
-            showBefore = await _blogDotNetContext.BlogPosts.AnyAsync(_ => _.PubDate > firstItem.PubDate);
+            showBefore = await _blogDotNetContext.RankedBlogPosts.AnyAsync(_ => _.Rank < firstItem.Rank);
         }
         bool showAfter = false;
-        Db.BlogPost? lastItem = results.LastOrDefault();
+        Db.RankedBlogPost? lastItem = results.LastOrDefault();
         if (lastItem != null)
         {
-            showAfter = await _blogDotNetContext.BlogPosts.AnyAsync(_ => _.PubDate < lastItem.PubDate);
+            showAfter = await _blogDotNetContext.RankedBlogPosts.AnyAsync(_ => _.Rank > lastItem.Rank);
         }
         return new Listing<BlogPost>
         {

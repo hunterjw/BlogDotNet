@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
             .ConfigureRunner(rb => rb
                 .AddPostgres()
                 .WithGlobalConnectionString(connectionString)
-                .ScanIn(typeof(CreateBlogDotNetSchema).Assembly).For.Migrations())
+                .ScanIn(typeof(CreateBlogDotNetSchema).Assembly).For.Migrations().For.EmbeddedResources())
             .AddScoped<MigrationService>();
     }
 }

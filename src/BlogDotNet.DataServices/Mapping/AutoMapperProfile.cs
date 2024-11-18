@@ -10,5 +10,7 @@ public class AutoMapperProfile : Profile
     {
         CreateMap<BlogPost, Db.BlogPost>()
             .ReverseMap();
+
+        CreateMap<Db.RankedBlogPost, BlogPost>();
     }
 }
