@@ -70,4 +70,10 @@ public class BlogPost
     /// </summary>
     [Column("pinned")]
     public bool Pinned { get; set; } = false;
+
+    /// <summary>
+    /// If the post is hidden or not
+    /// </summary>
+    [Column("hidden")]
+    public bool Hidden { get; set; } = false;
 }

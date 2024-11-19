@@ -84,7 +84,8 @@ Blog files are expected to be named with the pattern `*.blogpost.json`. Example 
 	
 	"Slug": "blog-post", // Blog post slug, used for generating post URL
 	"ContentFilePath": "content-file.md", // File path to a markdown file for the blog post content, relative to the blog file
-	"Pinned": false // Set to true to pin the post to the top of the homepage
+	"Pinned": false, // Set to true to pin the post to the top of the homepage
+	"Hidden": false // Set to true to hide the post from the homepage
 }
 ```
 

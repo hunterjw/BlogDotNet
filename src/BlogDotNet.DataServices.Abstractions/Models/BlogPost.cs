@@ -53,4 +53,9 @@ public class BlogPost
     /// If the post is pinned or not
     /// </summary>
     public bool Pinned { get; set; } = false;
+
+    /// <summary>
+    /// If the post is hidden or not
+    /// </summary>
+    public bool Hidden { get; set; } = false;
 }

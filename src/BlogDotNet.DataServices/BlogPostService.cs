@@ -38,7 +38,8 @@ public class BlogPostService(
     {
         List<Db.RankedBlogPost>? blogPosts = null;
 
-        IQueryable<Db.RankedBlogPost> query = _blogDotNetContext.RankedBlogPosts.Where(_ => _.Slug != "about");
+        IQueryable<Db.RankedBlogPost> query = _blogDotNetContext.RankedBlogPosts
+            .Where(_ => _.Slug != "about" && !_.Hidden);
 
         // Pagination
         if (after != null)
