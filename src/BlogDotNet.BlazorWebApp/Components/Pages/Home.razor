@@ -1,11 +1,11 @@
 ﻿@page "/"
-@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@rendermode InteractiveServer
 
 <InitializeTimeZone />
 
 <CustomPageTitle>Home</CustomPageTitle>
 
-@if (BlogPosts == null)
+@if (BlogPosts == null || !RendererInfo.IsInteractive)
 {
     <p>Loading...</p>
 }
